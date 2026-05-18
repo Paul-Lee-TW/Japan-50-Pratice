@@ -226,6 +226,73 @@
   }
   .voice-warn.show { display: block; }
 
+  .settings {
+    margin-top: 12px;
+    border-top: 1px solid var(--border);
+    padding-top: 8px;
+  }
+  .settings summary {
+    cursor: pointer;
+    font-size: 13px;
+    color: var(--muted);
+    user-select: none;
+    padding: 4px;
+    list-style: none;
+    text-align: center;
+  }
+  .settings summary::-webkit-details-marker { display: none; }
+  .settings summary::before {
+    content: '▸';
+    display: inline-block;
+    margin-right: 6px;
+    transition: transform 0.15s;
+  }
+  .settings[open] summary::before { transform: rotate(90deg); }
+  .settings summary:hover { color: var(--primary); }
+  .settings-body {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    padding: 10px 4px 4px;
+  }
+  .settings-body label {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 13px;
+    color: var(--text);
+  }
+  .settings-body label > .lbl {
+    flex: 0 0 64px;
+    color: var(--muted);
+  }
+  .settings-body select {
+    flex: 1;
+    padding: 6px 8px;
+    border: 1.5px solid var(--border);
+    border-radius: 6px;
+    background: var(--card);
+    font-size: 13px;
+    min-height: 32px;
+  }
+  .settings-body .range-wrap {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .settings-body input[type="range"] {
+    flex: 1;
+    accent-color: var(--primary);
+  }
+  .settings-body .range-val {
+    width: 38px;
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+    color: var(--muted);
+    font-size: 12px;
+  }
+
   .start-overlay {
     position: fixed;
     inset: 0;
@@ -296,7 +363,8 @@
   body.keyboard-up .modes-hint,
   body.keyboard-up .char-area .hint,
   body.keyboard-up .score-row,
-  body.keyboard-up .voice-warn {
+  body.keyboard-up .voice-warn,
+  body.keyboard-up .settings {
     display: none;
   }
   body.keyboard-up {
@@ -387,6 +455,38 @@
   <div class="voice-warn" id="voiceWarn">
     ⚠ 目前找不到日語語音。請在系統設定中安裝日語 TTS 語音包，或使用支援的瀏覽器（Chrome / Edge / Safari）。
   </div>
+
+  <details class="settings" id="settings">
+    <summary>⚙ 發音設定</summary>
+    <div class="settings-body">
+      <label>
+        <span class="lbl">語音</span>
+        <select id="voiceSelect"><option value="">(載入中…)</option></select>
+      </label>
+      <label>
+        <span class="lbl">語速</span>
+        <span class="range-wrap">
+          <input type="range" id="rate" min="0.5" max="1.5" step="0.05">
+          <span class="range-val" id="rateVal">0.85</span>
+        </span>
+      </label>
+      <label>
+        <span class="lbl">音調</span>
+        <span class="range-wrap">
+          <input type="range" id="pitch" min="0.5" max="1.5" step="0.05">
+          <span class="range-val" id="pitchVal">1.00</span>
+        </span>
+      </label>
+      <label>
+        <span class="lbl">連播次數</span>
+        <select id="playCount">
+          <option value="1">1 次</option>
+          <option value="2">2 次</option>
+          <option value="3">3 次</option>
+        </select>
+      </label>
+    </div>
+  </details>
 </div>
 
 <script>
@@ -436,6 +536,7 @@ function buildAll() {
 }
 
 const STORE_KEY = 'jp_score_v1';
+const SETTINGS_KEY = 'jp_settings_v1';
 const CATEGORY_MODES = ['hiragana', 'katakana', 'hiragana_dakuten', 'katakana_dakuten'];
 let selectedModes = new Set(['hiragana']);
 let current = null;
@@ -445,7 +546,15 @@ let total = 0;
 let firstAttempted = false;
 let solved = false;
 let jaVoice = null;
+let jaVoices = [];
 let started = false;
+
+const settings = {
+  voiceURI: '',
+  rate: 0.85,
+  pitch: 1.0,
+  playCount: 1,
+};
 
 const els = {
   char: document.getElementById('char'),
@@ -455,7 +564,26 @@ const els = {
   voiceWarn: document.getElementById('voiceWarn'),
   overlay: document.getElementById('startOverlay'),
   play: document.getElementById('play'),
+  voiceSelect: document.getElementById('voiceSelect'),
+  rate: document.getElementById('rate'),
+  pitch: document.getElementById('pitch'),
+  rateVal: document.getElementById('rateVal'),
+  pitchVal: document.getElementById('pitchVal'),
+  playCount: document.getElementById('playCount'),
 };
+
+function loadSettings() {
+  try {
+    const s = JSON.parse(localStorage.getItem(SETTINGS_KEY) || '{}');
+    if (typeof s.voiceURI === 'string') settings.voiceURI = s.voiceURI;
+    if (typeof s.rate === 'number' && s.rate >= 0.5 && s.rate <= 1.5) settings.rate = s.rate;
+    if (typeof s.pitch === 'number' && s.pitch >= 0.5 && s.pitch <= 1.5) settings.pitch = s.pitch;
+    if ([1, 2, 3].includes(s.playCount)) settings.playCount = s.playCount;
+  } catch (e) {}
+}
+function saveSettings() {
+  try { localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings)); } catch (e) {}
+}
 
 function loadScore() {
   try {
@@ -515,8 +643,15 @@ function loadVoice() {
     return;
   }
   const voices = window.speechSynthesis.getVoices();
-  jaVoice = voices.find(v => v.lang && v.lang.toLowerCase().startsWith('ja'))
-         || voices.find(v => /japanese/i.test(v.name));
+  jaVoices = voices.filter(v => (v.lang && v.lang.toLowerCase().startsWith('ja'))
+                              || /japanese/i.test(v.name));
+  if (settings.voiceURI) {
+    jaVoice = jaVoices.find(v => v.voiceURI === settings.voiceURI) || jaVoices[0] || null;
+  } else {
+    jaVoice = jaVoices[0] || null;
+  }
+  if (jaVoice) settings.voiceURI = jaVoice.voiceURI;
+  populateVoiceSelect();
   if (!jaVoice && voices.length > 0) {
     els.voiceWarn.classList.add('show');
   } else {
@@ -524,7 +659,27 @@ function loadVoice() {
   }
 }
 
-function speak(text, onDone) {
+function populateVoiceSelect() {
+  els.voiceSelect.innerHTML = '';
+  if (!jaVoices.length) {
+    const opt = document.createElement('option');
+    opt.value = '';
+    opt.textContent = '(無可用日語語音)';
+    els.voiceSelect.appendChild(opt);
+    els.voiceSelect.disabled = true;
+    return;
+  }
+  els.voiceSelect.disabled = false;
+  jaVoices.forEach(v => {
+    const opt = document.createElement('option');
+    opt.value = v.voiceURI;
+    opt.textContent = `${v.name} (${v.lang})`;
+    if (jaVoice && v.voiceURI === jaVoice.voiceURI) opt.selected = true;
+    els.voiceSelect.appendChild(opt);
+  });
+}
+
+function speakOnce(text, onDone) {
   let done = false;
   const finish = () => { if (!done) { done = true; if (onDone) onDone(); } };
   if (!started || !('speechSynthesis' in window)) {
@@ -536,8 +691,8 @@ function speak(text, onDone) {
     const u = new SpeechSynthesisUtterance(text);
     u.lang = 'ja-JP';
     if (jaVoice) u.voice = jaVoice;
-    u.rate = 0.85;
-    u.pitch = 1.0;
+    u.rate = settings.rate;
+    u.pitch = settings.pitch;
     if (onDone) {
       u.onend = finish;
       u.onerror = finish;
@@ -545,6 +700,20 @@ function speak(text, onDone) {
     }
     window.speechSynthesis.speak(u);
   } catch (e) { console.warn(e); finish(); }
+}
+
+function speak(text, onDone) {
+  const repeats = settings.playCount || 1;
+  let played = 0;
+  const playNext = () => {
+    played++;
+    if (played < repeats) {
+      setTimeout(() => speakOnce(text, playNext), 250);
+    } else if (onDone) {
+      onDone();
+    }
+  };
+  speakOnce(text, playNext);
 }
 
 function check() {
@@ -685,6 +854,34 @@ function keepInputFocused(el) {
 document.querySelectorAll('#modes button').forEach(keepInputFocused);
 keepInputFocused(els.char);
 
+function initSettingsUI() {
+  els.rate.value = settings.rate;
+  els.pitch.value = settings.pitch;
+  els.rateVal.textContent = Number(settings.rate).toFixed(2);
+  els.pitchVal.textContent = Number(settings.pitch).toFixed(2);
+  els.playCount.value = String(settings.playCount);
+}
+
+els.voiceSelect.addEventListener('change', () => {
+  settings.voiceURI = els.voiceSelect.value;
+  jaVoice = jaVoices.find(v => v.voiceURI === settings.voiceURI) || jaVoice;
+  saveSettings();
+});
+els.rate.addEventListener('input', () => {
+  settings.rate = Number(els.rate.value);
+  els.rateVal.textContent = settings.rate.toFixed(2);
+  saveSettings();
+});
+els.pitch.addEventListener('input', () => {
+  settings.pitch = Number(els.pitch.value);
+  els.pitchVal.textContent = settings.pitch.toFixed(2);
+  saveSettings();
+});
+els.playCount.addEventListener('change', () => {
+  settings.playCount = Number(els.playCount.value) || 1;
+  saveSettings();
+});
+
 if ('speechSynthesis' in window) {
   loadVoice();
   window.speechSynthesis.onvoiceschanged = loadVoice;
@@ -703,6 +900,8 @@ if (window.visualViewport) {
   window.visualViewport.addEventListener('scroll', updateKeyboardState);
 }
 
+loadSettings();
+initSettingsUI();
 loadScore();
 updateScore();
 pick();
