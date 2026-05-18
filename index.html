@@ -1,0 +1,711 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="五十音練習">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#d7263d">
+<meta name="format-detection" content="telephone=no">
+<title>五十音発音練習 — Japanese Kana Practice</title>
+<style>
+  :root {
+    --bg: #fbf6f3;
+    --card: #ffffff;
+    --text: #222;
+    --muted: #777;
+    --primary: #d7263d;
+    --primary-dark: #a81b2e;
+    --correct: #2e7d32;
+    --correct-bg: #e8f5e9;
+    --wrong: #c62828;
+    --wrong-bg: #ffebee;
+    --border: #e3d8d3;
+  }
+  * { box-sizing: border-box; }
+  html { -webkit-text-size-adjust: 100%; }
+  body {
+    font-family: -apple-system, "Segoe UI", "Hiragino Sans", "Yu Gothic", "PingFang TC", "Microsoft JhengHei", sans-serif;
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    min-height: 100dvh;
+    display: flex;
+    align-items: flex-start;
+    justify-content: center;
+    padding:
+      max(20px, env(safe-area-inset-top))
+      max(16px, env(safe-area-inset-right))
+      max(20px, env(safe-area-inset-bottom))
+      max(16px, env(safe-area-inset-left));
+    -webkit-tap-highlight-color: transparent;
+    overscroll-behavior-y: contain;
+  }
+  button, .character, input { touch-action: manipulation; }
+  button { -webkit-tap-highlight-color: transparent; }
+  .app {
+    background: var(--card);
+    border-radius: 16px;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.08);
+    max-width: 640px;
+    width: 100%;
+    padding: 24px 24px 28px;
+  }
+  h1 {
+    margin: 0 0 4px;
+    font-size: 24px;
+    text-align: center;
+  }
+  .subtitle {
+    text-align: center;
+    color: var(--muted);
+    font-size: 13px;
+    margin-bottom: 20px;
+  }
+  .modes {
+    display: flex;
+    gap: 6px;
+    justify-content: center;
+    flex-wrap: wrap;
+    margin-bottom: 6px;
+  }
+  .modes-hint {
+    text-align: center;
+    font-size: 11px;
+    color: var(--muted);
+    margin-bottom: 16px;
+  }
+  .modes button {
+    padding: 10px 16px;
+    min-height: 40px;
+    border: 1.5px solid var(--border);
+    background: var(--card);
+    color: var(--text);
+    border-radius: 999px;
+    cursor: pointer;
+    font-size: 15px;
+    transition: all 0.15s;
+  }
+  .modes button:hover { border-color: var(--primary); }
+  .modes button.active {
+    background: var(--primary);
+    color: white;
+    border-color: var(--primary);
+  }
+  .char-area {
+    text-align: center;
+    padding: 24px 0 16px;
+    user-select: none;
+    -webkit-user-select: none;
+    -webkit-touch-callout: none;
+  }
+  .character {
+    font-size: 140px;
+    line-height: 1;
+    cursor: pointer;
+    display: inline-block;
+    padding: 8px 24px;
+    border-radius: 12px;
+    transition: background 0.15s;
+  }
+  .character:hover { background: #faf0ee; }
+  .character:active { transform: scale(0.97); }
+  .hint {
+    font-size: 12px;
+    color: var(--muted);
+    margin-top: 4px;
+  }
+  .input-row {
+    display: flex;
+    gap: 8px;
+    justify-content: center;
+    margin-top: 8px;
+  }
+  input[type="text"] {
+    font-size: 22px;
+    padding: 12px 14px;
+    width: 280px;
+    max-width: 100%;
+    min-height: 48px;
+    text-align: center;
+    border: 2px solid var(--border);
+    border-radius: 8px;
+    outline: none;
+    transition: all 0.15s;
+    -webkit-appearance: none;
+    appearance: none;
+  }
+  input[type="text"]:focus { border-color: var(--primary); }
+  input.correct { border-color: var(--correct); background: var(--correct-bg); }
+  input.wrong { border-color: var(--wrong); background: var(--wrong-bg); }
+  .feedback {
+    text-align: center;
+    margin: 14px 0 4px;
+    min-height: 28px;
+    font-size: 17px;
+  }
+  .feedback.correct { color: var(--correct); }
+  .feedback.wrong { color: var(--wrong); }
+  .feedback .answer {
+    font-weight: 600;
+    font-size: 19px;
+  }
+  .controls {
+    display: flex;
+    gap: 8px;
+    justify-content: center;
+    margin-top: 16px;
+    flex-wrap: wrap;
+  }
+  .controls button {
+    padding: 12px 18px;
+    min-height: 44px;
+    font-size: 15px;
+    background: var(--card);
+    border: 1.5px solid var(--border);
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .controls button:hover { border-color: var(--primary); color: var(--primary); }
+  .controls button:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+    color: var(--muted);
+  }
+  .controls button:disabled:hover {
+    border-color: var(--border);
+    color: var(--muted);
+  }
+  .controls button.primary {
+    background: var(--primary);
+    color: white;
+    border-color: var(--primary);
+  }
+  .controls button.primary:hover {
+    background: var(--primary-dark);
+    color: white;
+  }
+  .score-row {
+    margin-top: 18px;
+    padding-top: 14px;
+    border-top: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    flex-wrap: wrap;
+  }
+  .score {
+    color: var(--muted);
+    font-size: 13px;
+  }
+  .reset-btn {
+    background: none;
+    border: none;
+    color: var(--muted);
+    font-size: 12px;
+    cursor: pointer;
+    text-decoration: underline;
+    padding: 6px 8px;
+  }
+  .reset-btn:hover { color: var(--primary); }
+  .voice-warn {
+    background: #fff8e1;
+    color: #8a6d00;
+    border: 1px solid #ffe082;
+    border-radius: 8px;
+    padding: 8px 12px;
+    font-size: 12px;
+    margin-top: 12px;
+    text-align: center;
+    display: none;
+  }
+  .voice-warn.show { display: block; }
+
+  .start-overlay {
+    position: fixed;
+    inset: 0;
+    background: linear-gradient(135deg, #d7263d 0%, #a81b2e 100%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 999;
+    cursor: pointer;
+    color: white;
+    text-align: center;
+    padding:
+      max(24px, env(safe-area-inset-top))
+      max(24px, env(safe-area-inset-right))
+      max(24px, env(safe-area-inset-bottom))
+      max(24px, env(safe-area-inset-left));
+    -webkit-user-select: none;
+    user-select: none;
+    -webkit-touch-callout: none;
+  }
+  .start-overlay.hidden { display: none; }
+  .start-overlay .panel { max-width: 320px; }
+  .start-overlay .logo {
+    font-size: 72px;
+    line-height: 1;
+    margin-bottom: 16px;
+  }
+  .start-overlay h2 {
+    font-size: 26px;
+    margin: 0 0 10px;
+    font-weight: 600;
+  }
+  .start-overlay p {
+    font-size: 15px;
+    opacity: 0.9;
+    margin: 0 0 28px;
+    line-height: 1.6;
+  }
+  .start-overlay .start-btn {
+    background: white;
+    color: var(--primary-dark);
+    border: none;
+    padding: 16px 40px;
+    font-size: 16px;
+    font-weight: 600;
+    border-radius: 999px;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.15);
+  }
+
+  @media (max-width: 480px) {
+    .app {
+      padding: 20px 18px 22px;
+      border-radius: 14px;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.06);
+    }
+    h1 { font-size: 22px; }
+    .subtitle { font-size: 12px; margin-bottom: 16px; }
+    .modes { gap: 5px; }
+    .modes button { padding: 9px 13px; font-size: 14px; }
+    .character { font-size: 110px; padding: 6px 16px; }
+    .char-area { padding: 16px 0 12px; }
+    input[type="text"] { font-size: 20px; width: 100%; }
+    .controls button { padding: 12px 14px; font-size: 14px; flex: 1 1 auto; min-width: 90px; }
+  }
+
+  body.keyboard-up h1,
+  body.keyboard-up .subtitle,
+  body.keyboard-up .modes-hint,
+  body.keyboard-up .char-area .hint,
+  body.keyboard-up .score-row,
+  body.keyboard-up .voice-warn {
+    display: none;
+  }
+  body.keyboard-up {
+    padding-top: max(6px, env(safe-area-inset-top));
+    padding-bottom: 6px;
+  }
+  body.keyboard-up .app {
+    padding: 12px 16px 14px;
+  }
+  body.keyboard-up .modes { margin-bottom: 8px; }
+  body.keyboard-up .modes button {
+    padding: 6px 11px;
+    font-size: 13px;
+    min-height: 32px;
+  }
+  body.keyboard-up .char-area { padding: 6px 0 4px; }
+  body.keyboard-up .character {
+    font-size: 68px;
+    padding: 2px 12px;
+  }
+  body.keyboard-up .input-row { margin-top: 2px; }
+  body.keyboard-up input[type="text"] {
+    font-size: 18px;
+    padding: 8px 12px;
+    min-height: 40px;
+  }
+  body.keyboard-up .feedback {
+    margin: 8px 0 0;
+    min-height: 22px;
+    font-size: 14px;
+  }
+  body.keyboard-up .controls { margin-top: 10px; gap: 6px; }
+  body.keyboard-up .controls button {
+    padding: 9px 12px;
+    min-height: 38px;
+    font-size: 13px;
+  }
+</style>
+</head>
+<body>
+<div class="start-overlay" id="startOverlay">
+  <div class="panel">
+    <div class="logo">五十音</div>
+    <h2>日文五十音練習</h2>
+    <p>看假名輸入羅馬拼音作答。<br>答對後才會聽到發音並進入下一題。</p>
+    <button class="start-btn" id="startBtn">開始練習</button>
+  </div>
+</div>
+
+<div class="app">
+  <h1>五十音発音練習</h1>
+  <div class="subtitle">Japanese Kana Pronunciation Practice · 日文假名練習</div>
+
+  <div class="modes" id="modes">
+    <button data-mode="hiragana" class="active">平假名 ひらがな</button>
+    <button data-mode="katakana">片假名 カタカナ</button>
+    <button data-mode="hiragana_dakuten">平假名濁音</button>
+    <button data-mode="katakana_dakuten">片假名濁音</button>
+    <button data-mode="all">全部</button>
+  </div>
+  <div class="modes-hint">點選範圍可複選 · 「全部」= 全選</div>
+
+  <div class="char-area">
+    <div class="character" id="char" title="答對後可點擊重播發音">あ</div>
+    <div class="hint">輸入羅馬拼音 · Enter 提交 · 答對後播放發音</div>
+  </div>
+
+  <div class="input-row">
+    <input type="text" id="input" placeholder="輸入羅馬拼音…"
+           lang="en"
+           autocomplete="off" autocapitalize="none" autocorrect="off"
+           spellcheck="false" inputmode="url" enterkeyhint="enter">
+  </div>
+
+  <div class="feedback" id="feedback"></div>
+
+  <div class="controls">
+    <button id="play" disabled>🔊 播放</button>
+    <button id="next" class="primary">下一個 →</button>
+    <button id="skip">顯示答案</button>
+  </div>
+
+  <div class="score-row">
+    <div class="score" id="score">答對 0 / 0 · 正確率 —</div>
+    <button class="reset-btn" id="reset">重置分數</button>
+  </div>
+
+  <div class="voice-warn" id="voiceWarn">
+    ⚠ 目前找不到日語語音。請在系統設定中安裝日語 TTS 語音包，或使用支援的瀏覽器（Chrome / Edge / Safari）。
+  </div>
+</div>
+
+<script>
+const DATA = {
+  hiragana: [
+    { c: 'あ', r: ['a'] }, { c: 'い', r: ['i'] }, { c: 'う', r: ['u'] }, { c: 'え', r: ['e'] }, { c: 'お', r: ['o'] },
+    { c: 'か', r: ['ka'] }, { c: 'き', r: ['ki'] }, { c: 'く', r: ['ku'] }, { c: 'け', r: ['ke'] }, { c: 'こ', r: ['ko'] },
+    { c: 'さ', r: ['sa'] }, { c: 'し', r: ['shi', 'si'] }, { c: 'す', r: ['su'] }, { c: 'せ', r: ['se'] }, { c: 'そ', r: ['so'] },
+    { c: 'た', r: ['ta'] }, { c: 'ち', r: ['chi', 'ti'] }, { c: 'つ', r: ['tsu', 'tu'] }, { c: 'て', r: ['te'] }, { c: 'と', r: ['to'] },
+    { c: 'な', r: ['na'] }, { c: 'に', r: ['ni'] }, { c: 'ぬ', r: ['nu'] }, { c: 'ね', r: ['ne'] }, { c: 'の', r: ['no'] },
+    { c: 'は', r: ['ha'] }, { c: 'ひ', r: ['hi'] }, { c: 'ふ', r: ['fu', 'hu'] }, { c: 'へ', r: ['he'] }, { c: 'ほ', r: ['ho'] },
+    { c: 'ま', r: ['ma'] }, { c: 'み', r: ['mi'] }, { c: 'む', r: ['mu'] }, { c: 'め', r: ['me'] }, { c: 'も', r: ['mo'] },
+    { c: 'や', r: ['ya'] }, { c: 'ゆ', r: ['yu'] }, { c: 'よ', r: ['yo'] },
+    { c: 'ら', r: ['ra'] }, { c: 'り', r: ['ri'] }, { c: 'る', r: ['ru'] }, { c: 'れ', r: ['re'] }, { c: 'ろ', r: ['ro'] },
+    { c: 'わ', r: ['wa'] }, { c: 'を', r: ['wo', 'o'] }, { c: 'ん', r: ['n', 'nn'] },
+  ],
+  katakana: [
+    { c: 'ア', r: ['a'], say: 'あ' }, { c: 'イ', r: ['i'], say: 'い' }, { c: 'ウ', r: ['u'], say: 'う' }, { c: 'エ', r: ['e'], say: 'え' }, { c: 'オ', r: ['o'], say: 'お' },
+    { c: 'カ', r: ['ka'], say: 'か' }, { c: 'キ', r: ['ki'], say: 'き' }, { c: 'ク', r: ['ku'], say: 'く' }, { c: 'ケ', r: ['ke'], say: 'け' }, { c: 'コ', r: ['ko'], say: 'こ' },
+    { c: 'サ', r: ['sa'], say: 'さ' }, { c: 'シ', r: ['shi', 'si'], say: 'し' }, { c: 'ス', r: ['su'], say: 'す' }, { c: 'セ', r: ['se'], say: 'せ' }, { c: 'ソ', r: ['so'], say: 'そ' },
+    { c: 'タ', r: ['ta'], say: 'た' }, { c: 'チ', r: ['chi', 'ti'], say: 'ち' }, { c: 'ツ', r: ['tsu', 'tu'], say: 'つ' }, { c: 'テ', r: ['te'], say: 'て' }, { c: 'ト', r: ['to'], say: 'と' },
+    { c: 'ナ', r: ['na'], say: 'な' }, { c: 'ニ', r: ['ni'], say: 'に' }, { c: 'ヌ', r: ['nu'], say: 'ぬ' }, { c: 'ネ', r: ['ne'], say: 'ね' }, { c: 'ノ', r: ['no'], say: 'の' },
+    { c: 'ハ', r: ['ha'], say: 'は' }, { c: 'ヒ', r: ['hi'], say: 'ひ' }, { c: 'フ', r: ['fu', 'hu'], say: 'ふ' }, { c: 'ヘ', r: ['he'], say: 'へ' }, { c: 'ホ', r: ['ho'], say: 'ほ' },
+    { c: 'マ', r: ['ma'], say: 'ま' }, { c: 'ミ', r: ['mi'], say: 'み' }, { c: 'ム', r: ['mu'], say: 'む' }, { c: 'メ', r: ['me'], say: 'め' }, { c: 'モ', r: ['mo'], say: 'も' },
+    { c: 'ヤ', r: ['ya'], say: 'や' }, { c: 'ユ', r: ['yu'], say: 'ゆ' }, { c: 'ヨ', r: ['yo'], say: 'よ' },
+    { c: 'ラ', r: ['ra'], say: 'ら' }, { c: 'リ', r: ['ri'], say: 'り' }, { c: 'ル', r: ['ru'], say: 'る' }, { c: 'レ', r: ['re'], say: 'れ' }, { c: 'ロ', r: ['ro'], say: 'ろ' },
+    { c: 'ワ', r: ['wa'], say: 'わ' }, { c: 'ヲ', r: ['wo', 'o'], say: 'を' }, { c: 'ン', r: ['n', 'nn'], say: 'ん' },
+  ],
+  hiragana_dakuten: [
+    { c: 'が', r: ['ga'] }, { c: 'ぎ', r: ['gi'] }, { c: 'ぐ', r: ['gu'] }, { c: 'げ', r: ['ge'] }, { c: 'ご', r: ['go'] },
+    { c: 'ざ', r: ['za'] }, { c: 'じ', r: ['ji', 'zi'] }, { c: 'ず', r: ['zu'] }, { c: 'ぜ', r: ['ze'] }, { c: 'ぞ', r: ['zo'] },
+    { c: 'だ', r: ['da'] }, { c: 'ぢ', r: ['ji', 'di'] }, { c: 'づ', r: ['zu', 'du'] }, { c: 'で', r: ['de'] }, { c: 'ど', r: ['do'] },
+    { c: 'ば', r: ['ba'] }, { c: 'び', r: ['bi'] }, { c: 'ぶ', r: ['bu'] }, { c: 'べ', r: ['be'] }, { c: 'ぼ', r: ['bo'] },
+    { c: 'ぱ', r: ['pa'] }, { c: 'ぴ', r: ['pi'] }, { c: 'ぷ', r: ['pu'] }, { c: 'ぺ', r: ['pe'] }, { c: 'ぽ', r: ['po'] },
+  ],
+  katakana_dakuten: [
+    { c: 'ガ', r: ['ga'], say: 'が' }, { c: 'ギ', r: ['gi'], say: 'ぎ' }, { c: 'グ', r: ['gu'], say: 'ぐ' }, { c: 'ゲ', r: ['ge'], say: 'げ' }, { c: 'ゴ', r: ['go'], say: 'ご' },
+    { c: 'ザ', r: ['za'], say: 'ざ' }, { c: 'ジ', r: ['ji', 'zi'], say: 'じ' }, { c: 'ズ', r: ['zu'], say: 'ず' }, { c: 'ゼ', r: ['ze'], say: 'ぜ' }, { c: 'ゾ', r: ['zo'], say: 'ぞ' },
+    { c: 'ダ', r: ['da'], say: 'だ' }, { c: 'ヂ', r: ['ji', 'di'], say: 'ぢ' }, { c: 'ヅ', r: ['zu', 'du'], say: 'づ' }, { c: 'デ', r: ['de'], say: 'で' }, { c: 'ド', r: ['do'], say: 'ど' },
+    { c: 'バ', r: ['ba'], say: 'ば' }, { c: 'ビ', r: ['bi'], say: 'び' }, { c: 'ブ', r: ['bu'], say: 'ぶ' }, { c: 'ベ', r: ['be'], say: 'べ' }, { c: 'ボ', r: ['bo'], say: 'ぼ' },
+    { c: 'パ', r: ['pa'], say: 'ぱ' }, { c: 'ピ', r: ['pi'], say: 'ぴ' }, { c: 'プ', r: ['pu'], say: 'ぷ' }, { c: 'ペ', r: ['pe'], say: 'ぺ' }, { c: 'ポ', r: ['po'], say: 'ぽ' },
+  ],
+};
+
+function buildAll() {
+  return [...DATA.hiragana, ...DATA.katakana, ...DATA.hiragana_dakuten, ...DATA.katakana_dakuten];
+}
+
+const STORE_KEY = 'jp_score_v1';
+const CATEGORY_MODES = ['hiragana', 'katakana', 'hiragana_dakuten', 'katakana_dakuten'];
+let selectedModes = new Set(['hiragana']);
+let current = null;
+let prev = null;
+let correctCount = 0;
+let total = 0;
+let firstAttempted = false;
+let solved = false;
+let jaVoice = null;
+let started = false;
+
+const els = {
+  char: document.getElementById('char'),
+  input: document.getElementById('input'),
+  feedback: document.getElementById('feedback'),
+  score: document.getElementById('score'),
+  voiceWarn: document.getElementById('voiceWarn'),
+  overlay: document.getElementById('startOverlay'),
+  play: document.getElementById('play'),
+};
+
+function loadScore() {
+  try {
+    const s = JSON.parse(localStorage.getItem(STORE_KEY) || '{}');
+    correctCount = Number(s.correct) || 0;
+    total = Number(s.total) || 0;
+  } catch (e) {}
+}
+function saveScore() {
+  try {
+    localStorage.setItem(STORE_KEY, JSON.stringify({ correct: correctCount, total: total }));
+  } catch (e) {}
+}
+
+function getList() {
+  const items = [];
+  selectedModes.forEach(m => {
+    if (DATA[m]) items.push(...DATA[m]);
+  });
+  return items;
+}
+
+function updateModeButtons() {
+  document.querySelectorAll('#modes button').forEach(b => {
+    const m = b.dataset.mode;
+    if (m === 'all') {
+      const allSelected = CATEGORY_MODES.every(c => selectedModes.has(c));
+      b.classList.toggle('active', allSelected);
+    } else {
+      b.classList.toggle('active', selectedModes.has(m));
+    }
+  });
+}
+
+function pick() {
+  const list = getList();
+  let next;
+  do {
+    next = list[Math.floor(Math.random() * list.length)];
+  } while (list.length > 1 && next === prev);
+  prev = next;
+  current = next;
+  firstAttempted = false;
+  solved = false;
+  els.char.textContent = current.c;
+  els.feedback.textContent = '';
+  els.feedback.className = 'feedback';
+  els.input.value = '';
+  els.input.className = '';
+  els.play.disabled = true;
+  if (started) els.input.focus();
+}
+
+function loadVoice() {
+  if (!('speechSynthesis' in window)) {
+    els.voiceWarn.classList.add('show');
+    return;
+  }
+  const voices = window.speechSynthesis.getVoices();
+  jaVoice = voices.find(v => v.lang && v.lang.toLowerCase().startsWith('ja'))
+         || voices.find(v => /japanese/i.test(v.name));
+  if (!jaVoice && voices.length > 0) {
+    els.voiceWarn.classList.add('show');
+  } else {
+    els.voiceWarn.classList.remove('show');
+  }
+}
+
+function speak(text, onDone) {
+  let done = false;
+  const finish = () => { if (!done) { done = true; if (onDone) onDone(); } };
+  if (!started || !('speechSynthesis' in window)) {
+    if (onDone) setTimeout(finish, 400);
+    return;
+  }
+  try {
+    window.speechSynthesis.cancel();
+    const u = new SpeechSynthesisUtterance(text);
+    u.lang = 'ja-JP';
+    if (jaVoice) u.voice = jaVoice;
+    u.rate = 0.85;
+    u.pitch = 1.0;
+    if (onDone) {
+      u.onend = finish;
+      u.onerror = finish;
+      setTimeout(finish, 3000);
+    }
+    window.speechSynthesis.speak(u);
+  } catch (e) { console.warn(e); finish(); }
+}
+
+function check() {
+  if (solved) return;
+  const raw = els.input.value.trim().toLowerCase();
+  if (!raw) return;
+  const valid = current.r.map(x => x.toLowerCase());
+  const isCorrect = valid.includes(raw);
+
+  if (!firstAttempted) {
+    firstAttempted = true;
+    total++;
+    if (isCorrect) correctCount++;
+    updateScore();
+  }
+  els.play.disabled = false;
+
+  if (isCorrect) {
+    solved = true;
+    els.input.className = 'correct';
+    const others = current.r.filter(x => x.toLowerCase() !== raw && x !== '');
+    els.feedback.innerHTML = others.length
+      ? `✓ 正確！其他答案：<span class="answer">${others.join(' / ')}</span>`
+      : '✓ 正確！';
+    els.feedback.className = 'feedback correct';
+    const advanceDelay = others.length ? 1200 : 100;
+    speak(current.say || current.c, () => {
+      if (!solved) return;
+      setTimeout(() => { if (solved) pick(); }, advanceDelay);
+    });
+    return;
+  }
+
+  els.input.className = 'wrong';
+  els.feedback.innerHTML = `✗ 正確答案：<span class="answer">${current.r.join(' / ')}</span>`;
+  els.feedback.className = 'feedback wrong';
+  speak(current.say || current.c);
+}
+
+function showAnswer() {
+  if (solved) return;
+  if (!firstAttempted) {
+    firstAttempted = true;
+    total++;
+    updateScore();
+  }
+  els.input.className = 'wrong';
+  els.feedback.innerHTML = `答案：<span class="answer">${current.r.join(' / ')}</span>`;
+  els.feedback.className = 'feedback wrong';
+  els.play.disabled = false;
+  speak(current.say || current.c);
+}
+
+function updateScore() {
+  const rate = total ? Math.round(correctCount / total * 100) + '%' : '—';
+  els.score.textContent = `答對 ${correctCount} / ${total} · 正確率 ${rate}`;
+  saveScore();
+}
+
+function resetScore() {
+  if (!confirm('確定要重置分數？')) return;
+  correctCount = 0;
+  total = 0;
+  updateScore();
+}
+
+function startApp() {
+  if (started) return;
+  started = true;
+  els.overlay.classList.add('hidden');
+  els.input.focus();
+  if ('speechSynthesis' in window) {
+    try {
+      const u = new SpeechSynthesisUtterance('.');
+      u.volume = 0;
+      window.speechSynthesis.speak(u);
+    } catch (e) {}
+  }
+}
+
+document.querySelectorAll('#modes button').forEach(b => {
+  b.addEventListener('click', () => {
+    const m = b.dataset.mode;
+    if (m === 'all') {
+      selectedModes = new Set(CATEGORY_MODES);
+    } else if (selectedModes.has(m)) {
+      if (selectedModes.size > 1) selectedModes.delete(m);
+    } else {
+      selectedModes.add(m);
+    }
+    updateModeButtons();
+    prev = null;
+    pick();
+  });
+});
+
+els.input.addEventListener('keydown', e => {
+  if (e.key === 'Enter') {
+    e.preventDefault();
+    if (solved) pick();
+    else check();
+  }
+});
+
+els.input.addEventListener('beforeinput', e => {
+  if (els.input.classList.contains('wrong')
+      && e.inputType === 'insertText') {
+    e.preventDefault();
+    els.input.value = e.data || '';
+    els.input.className = '';
+  }
+});
+
+els.play.addEventListener('click', () => {
+  if (!firstAttempted) return;
+  speak(current.say || current.c);
+});
+document.getElementById('next').addEventListener('click', pick);
+document.getElementById('skip').addEventListener('click', showAnswer);
+document.getElementById('reset').addEventListener('click', resetScore);
+els.char.addEventListener('click', () => {
+  if (!firstAttempted) return;
+  speak(current.say || current.c);
+});
+
+els.overlay.addEventListener('click', startApp);
+document.getElementById('startBtn').addEventListener('click', e => {
+  e.stopPropagation();
+  startApp();
+});
+
+function keepInputFocused(el) {
+  el.addEventListener('mousedown', e => {
+    if (started) e.preventDefault();
+  });
+}
+['play', 'next', 'skip'].forEach(id => keepInputFocused(document.getElementById(id)));
+document.querySelectorAll('#modes button').forEach(keepInputFocused);
+keepInputFocused(els.char);
+
+if ('speechSynthesis' in window) {
+  loadVoice();
+  window.speechSynthesis.onvoiceschanged = loadVoice;
+} else {
+  els.voiceWarn.classList.add('show');
+}
+
+function updateKeyboardState() {
+  const vv = window.visualViewport;
+  if (!vv) return;
+  const kbHeight = window.innerHeight - vv.height - vv.offsetTop;
+  document.body.classList.toggle('keyboard-up', kbHeight > 120);
+}
+if (window.visualViewport) {
+  window.visualViewport.addEventListener('resize', updateKeyboardState);
+  window.visualViewport.addEventListener('scroll', updateKeyboardState);
+}
+
+loadScore();
+updateScore();
+pick();
+</script>
+</body>
+</html>
